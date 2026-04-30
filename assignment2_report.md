@@ -1,7 +1,7 @@
 # Assignment 2: Static Personal Blog Website Report
 
 **Student Name**: Zhaoran Xu  
-**Student ID**: [Your Student ID]
+**Student ID**: ZY2557210
 
 ---
 
