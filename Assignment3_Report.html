@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Assignment 3 Report - Zhaoran Xu's Personal Blog</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <p><a href="index.html">&larr; Back to Home</a></p>
+
+    <h1>Assignment 3: Deployment and Integration of AI Agents</h1>
+
+    <h2>一、在线Agent部署</h2>
+
+    <h3>1.1 工具选择</h3>
+    <p>本次使用 <strong>DeepSeek API</strong> 作为底层模型，搭配 <strong>Dify Cloud</strong> 平台搭建Agent。选择DeepSeek是因为其API成本低，适合个人测试；选择Dify是因为其图形化界面，不需要编写代码即可配置工具调用能力。</p>
+
+    <h3>1.2 配置步骤</h3>
+    <p><strong>第1步：在Dify中配置DeepSeek模型供应商</strong><br>
+    最初遇到API余额不足的报错（<code>Insufficient Balance</code>），充值3元后解决：</p>
+    <img src="images/1782407143029_image.png" alt="配置DeepSeek供应商" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p><strong>第2步：在Agent应用中添加Tavily搜索工具</strong></p>
+    <img src="images/1782407829403_image.png" alt="添加Tavily工具" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p><strong>第3步：完成Tavily工具授权</strong><br>
+    授权前显示"工具未授权"，去Tavily官网申请免费API Key后完成授权：</p>
+    <img src="images/1782408022904_image.png" alt="Tavily工具授权完成" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <h3>1.3 测试与问题</h3>
+    <p>提问："2026年现在最新的人工智能大模型有哪些值得关注的发布？"</p>
+    <img src="images/1782408451780_image.png" alt="测试结果" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p><strong>问题记录</strong>：测试发现Agent显示"已深度思考"而非实际调用搜索工具，回答内容暴露出模型并未真正联网查证（模型自己提到"2026年可能是笔误"）。说明工具未被触发调用。</p>
+    <p><strong>原因分析</strong>：可能是System Prompt未明确引导模型在何种情况下必须调用搜索工具，也可能是问题表述不够明确触发"搜索意图"。受限于时间，本次未进一步深入调试解决，但记录下这一发现作为后续优化方向。</p>
+
+    <hr>
+
+    <h2>二、本地模型部署</h2>
+
+    <h3>2.1 安装步骤</h3>
+    <ol>
+      <li>从 ollama.com 下载并安装 Ollama</li>
+      <li>终端运行 <code>ollama pull qwen2.5:7b</code> 拉取模型（约4.7GB）</li>
+      <li>运行 <code>ollama run qwen2.5:7b</code> 进入交互对话</li>
+    </ol>
+    <p>确认安装版本（0.30.10）并成功拉取模型：</p>
+    <img src="images/1782406287155_image.png" alt="安装与拉取模型" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <h3>2.2 交互测试</h3>
+    <p>测试问题："请用Python写一个二分查找算法，并简要解释时间复杂度"<br>
+    模型给出了正确的代码实现，并附带了时间复杂度的数学推导：</p>
+    <img src="images/1782406404625_image.png" alt="终端对话结果" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <h3>2.3 小问题记录</h3>
+    <p>退出对话时输入大写 <code>/BYE</code> 报错"Unknown command"，改用小写 <code>/bye</code> 后成功退出，说明命令大小写敏感。</p>
+
+    <hr>
+
+    <h2>三、IDE集成</h2>
+
+    <h3>3.1 安装Continue插件</h3>
+    <img src="images/1782408634464_image.png" alt="Continue插件安装" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <h3>3.2 尝试连接DeepSeek在线API</h3>
+    <img src="images/1782408966742_image.png" alt="Continue Models面板" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+    <img src="images/1782409338733_image.png" alt="DeepSeek Provider配置" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+    <img src="images/1782409469969_image.png" alt="模型未正确加载" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+    <img src="images/1782409612522_image.png" alt="No models configured" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+    <img src="images/1782409835684_image.png" alt="Beta API报错" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p>尝试修改 <code>config.yaml</code>，手动指定 <code>provider: openai</code> 及 <code>apiBase</code>：</p>
+    <img src="images/1782409886856_image.png" alt="config.yaml配置（API Key已遮挡）" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p>保存后重新测试，仍然报相同的beta API错误：</p>
+    <img src="images/1782410181728_image.png" alt="仍然报错" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p><strong>问题分析</strong>：怀疑Continue插件对DeepSeek新版接口的适配存在兼容性问题，多次调整 <code>apiBase</code> 路径与 <code>provider</code> 类型均未解决。</p>
+
+    <h3>3.3 切换本地模型再次受阻</h3>
+    <p>尝试切换到本地Ollama的 <code>qwen2.5</code> 模型，但因为本地实际安装的标签是 <code>qwen2.5:7b</code>，名称不完全匹配导致Continue报错"未安装"：</p>
+    <img src="images/1782410613915_image.png" alt="本地模型未识别" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <p>手动在config.yaml中补全完整模型名后，再次测试仍报"Failed to load config"错误：</p>
+    <img src="images/1782410951090_image.png" alt="config加载失败" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <h3>3.4 最终方案：绕开插件，直接使用VSCode内置终端</h3>
+    <p>由于Continue插件持续出现兼容性问题，且时间有限，改为直接在 <strong>VSCode内置终端中调用本地Ollama模型</strong>，同样达到"在IDE环境中使用AI辅助编程"的效果。</p>
+
+    <p>测试代码：</p>
+    <pre style="background:#f5f5f5;padding:12px;border-radius:6px;overflow-x:auto;"><code>def calc(numbers):
+    result = []
+    for i in range(len(numbers)):
+        if numbers[i] % 2 == 0:
+            result.append(numbers[i] * 2)
+    total = 0
+    for i in range(len(result)):
+        total = total + result[i]
+    return total</code></pre>
+
+    <p>在VSCode终端中输入解释与重构请求，AI给出了清晰的逐步解释，并提供了使用生成器表达式 + <code>sum()</code> 函数的简化重构版本，功能保持一致但代码更简洁高效：</p>
+    <img src="images/1782411237692_image.png" alt="VSCode终端AI解释与重构" style="max-width:100%;border:1px solid #ddd;border-radius:6px;margin:10px 0;">
+
+    <hr>
+
+    <h2>四、反思与对比</h2>
+    <p><em>【请在此处用自己的话写2-3句真实感受，可参考以下方向：】</em></p>
+    <ul>
+      <li>在线模型（DeepSeek通过Dify）响应速度的主观感受、搭建Agent工具调用链路是否符合预期</li>
+      <li>本地模型（Ollama）部署难度、是否离线可用、与在线模型在中文/逻辑能力上的差异感受</li>
+      <li>IDE集成环节遇到的插件兼容性问题，以及最终绕开问题采用的解决方式，给你带来什么启发</li>
+      <li>如果时间充足，接下来还想继续解决或优化的方向</li>
+    </ul>
+
+    <hr>
+
+    <h2>附：遇到的主要问题汇总</h2>
+    <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%;">
+      <tr><th>阶段</th><th>问题</th><th>处理方式</th></tr>
+      <tr><td>在线Agent</td><td>DeepSeek API余额不足</td><td>充值3元解决</td></tr>
+      <tr><td>在线Agent</td><td>Agent未真正调用搜索工具</td><td>记录现象，作为后续优化方向</td></tr>
+      <tr><td>IDE集成</td><td>Continue连接DeepSeek报beta API错误</td><td>多次调整config.yaml未解决</td></tr>
+      <tr><td>IDE集成</td><td>Ollama模型版本号未匹配</td><td>手动补全标签仍报config加载失败</td></tr>
+      <tr><td>IDE集成</td><td>Continue插件持续报错，时间有限</td><td>改用VSCode内置终端直接调用Ollama完成演示</td></tr>
+    </table>
+
+  </main>
+</body>
+</html>

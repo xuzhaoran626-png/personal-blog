@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASM Feature Classifier — 航空钣金件特征识别与工艺推荐系统</title>
+<style>
+:root{--bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#e8eaf0;--text2:#8b93a8;--text3:#4e5668;--accent:#4f8ef7;--accent2:#2d5fd4;--green:#3ecf8e;--amber:#f5a623;--red:#ef4444;--purple:#a78bfa;--radius:10px;--radius-lg:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh}
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:24px 0;display:flex;flex-direction:column}
+.main{overflow-y:auto}
+.logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.logo-title{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5}
+.nav-section{padding:0 12px;margin-bottom:8px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;padding:0 8px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(79,142,247,.12);color:var(--accent)}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:16px 20px 0;border-top:1px solid var(--border)}
+.paper-ref{font-size:10px;color:var(--text3);line-height:1.6}
+.paper-ref strong{color:var(--text2)}
+.pane{display:none;padding:32px 36px}
+.pane.active{display:block}
+.page-header{padding:0 0 24px;border:none}
+.breadcrumb{font-size:11px;color:var(--text3);margin-bottom:10px}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.section-hdr h2{font-size:16px;font-weight:600}
+.section-hdr p{font-size:12px;color:var(--text2);margin-top:3px}
+.tag-source{font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 8px;border-radius:4px;white-space:nowrap}
+.tree-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+.category-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .2s}
+.category-card:hover{border-color:var(--border2)}
+.cat-header{padding:16px 18px 14px;border-bottom:1px solid var(--border)}
+.cat-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.cat-name{font-size:15px;font-weight:600}
+.cat-desc{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5}
+.cat-features{padding:12px 18px}
+.feat-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text);margin:3px;cursor:pointer;transition:all .15s}
+.feat-tag:hover{border-color:var(--border2);background:rgba(255,255,255,.06)}
+.feat-tag.selected{border-color:var(--accent);background:rgba(79,142,247,.12);color:var(--accent)}
+.classifier-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.input-panel,.result-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px}
+.panel-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.panel-title::before{content:'';display:block;width:3px;height:14px;border-radius:2px;background:var(--accent)}
+.field-group{margin-bottom:14px}
+.field-label{font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between}
+.field-label span{color:var(--text3);font-size:11px}
+select,input[type=text],input[type=number],textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:9px 12px;font-family:inherit;transition:border-color .15s;outline:none}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--bg3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.result-empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.result-class{border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid}
+.class-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.class-name{font-size:18px;font-weight:700;margin-bottom:4px}
+.class-conf{font-size:12px;opacity:.7}
+.conf-bar-track{height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:10px;overflow:hidden}
+.conf-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.process-list{margin-top:14px}
+.process-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:8px;margin-bottom:8px;font-size:13px}
+.process-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+.process-content{flex:1}
+.process-name{font-weight:600;font-size:13px}
+.process-detail{color:var(--text2);font-size:12px;margin-top:2px;line-height:1.5}
+.ai-layout{display:grid;grid-template-columns:1fr 340px;gap:20px}
+.chat-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column;height:600px}
+.chat-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.ai-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:14px}
+.chat-title{font-size:14px;font-weight:600}
+.chat-subtitle{font-size:11px;color:var(--text3)}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.65}
+.msg.user{align-self:flex-end;background:var(--accent2);color:#fff;border-radius:12px 12px 4px 12px}
+.msg.ai{align-self:flex-start;background:var(--bg3);color:var(--text);border-radius:12px 12px 12px 4px}
+.msg.thinking{color:var(--text3);font-style:italic}
+.chat-input-area{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:9px 12px;font-family:inherit;outline:none;resize:none}
+.chat-input:focus{border-color:var(--accent)}
+.send-btn{width:36px;height:36px;background:var(--accent);border:none;border-radius:8px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:flex-end;transition:background .15s}
+.send-btn:hover{background:var(--accent2)}
+.quick-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.quick-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.quick-btn{display:block;width:100%;text-align:left;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:8px;transition:all .15s;font-family:inherit;line-height:1.5}
+.quick-btn:hover{border-color:var(--border2);color:var(--text)}
+.history-table{width:100%;border-collapse:collapse;font-size:13px}
+.history-table th{background:var(--bg3);padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+.history-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.history-table tr:hover td{background:rgba(255,255,255,.02)}
+.history-table tr:last-child td{border-bottom:none}
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.bg-web{background:rgba(79,142,247,.12);color:var(--accent);border:1px solid rgba(79,142,247,.25)}
+.bg-trim{background:rgba(62,207,142,.12);color:var(--green);border:1px solid rgba(62,207,142,.25)}
+.bg-deform{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.25)}
+.dot-web{background:var(--accent)}
+.dot-trim{background:var(--green)}
+.dot-deform{background:var(--amber)}
+.dot-ai{background:var(--purple)}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.tree-grid,.classifier-grid,.ai-layout{grid-template-columns:1fr}.pane{padding:20px 16px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-title">ASM Classifier</div>
+    <div class="logo-sub">航空钣金件特征识别<br>与工艺推荐系统 v1.0</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">功能模块</div>
+    <div class="nav-item active" onclick="switchPane('tree',this)"><div class="nav-dot dot-web"></div>特征分类树</div>
+    <div class="nav-item" onclick="switchPane('classifier',this)"><div class="nav-dot dot-trim"></div>特征录入 &amp; 识别</div>
+    <div class="nav-item" onclick="switchPane('ai',this)"><div class="nav-dot dot-ai"></div>AI 工艺助手</div>
+    <div class="nav-item" onclick="switchPane('history',this)"><div class="nav-dot dot-deform"></div>识别记录</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="paper-ref">
+      <strong>理论来源</strong><br>
+      Skrzek et al. (2026)<br>
+      KDD-iCPPS Framework<br>
+      Int. J. Adv. Manuf. Technol.<br>
+      142: 2381–2407
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- PANE 1: TREE -->
+<div id="pane-tree" class="pane active">
+  <div class="page-header">
+    <div class="breadcrumb">ASM Classifier / 特征分类树</div>
+    <div class="section-hdr">
+      <div><h2>航空钣金件特征分类体系</h2><p>基于论文 Fig.6 — Ghaffarishahri &amp; Rivest (2020/2022) AFR 分类法，Section 4.1</p></div>
+      <span class="tag-source">来源：KDD-iCPPS</span>
+    </div>
+  </div>
+  <div class="tree-grid">
+    <div class="category-card">
+      <div class="cat-header">
+        <div class="cat-badge bg-web">● Base Feature</div>
+        <div class="cat-name" style="color:var(--accent)">Web</div>
+        <div class="cat-desc">钣金件基础平面，由裁切坯料和成形操作产生，是所有其他特征的母特征</div>
+      </div>
+      <div class="cat-features">
+        <div class="feat-tag" onclick="selectFeat(this,'Web','基础面，由裁切空白料和成形操作产生，是所有特征的起源','#4f8ef7')">● Web</div>
+      </div>
+    </div>
+    <div class="category-card">
+      <div class="cat-header">
+        <div class="cat-badge bg-trim">● Refinement Features</div>
+        <div class="cat-name" style="color:var(--green)">Trim Features</div>
+        <div class="cat-desc">通过去除材料产生的修整特征，保持或改变母特征边界，10 种子特征</div>
+      </div>
+      <div class="cat-features">
+        <div class="feat-tag" onclick="selectFeat(this,'Cutout','去除母特征截面，保持边界不变，用于减重或功能开口','#3ecf8e')">● Cutout</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Hole','圆形截面切除，Cutout 的特殊形式，用于紧固件安装','#3ecf8e')">● Hole</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Stringer Cutout','改变母特征边界，为桁条穿越安装预留空间','#3ecf8e')">● Stringer Cutout</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Bend Relief','翻边与腹板间的防裂缺口，长度由设计准则确定','#3ecf8e')">● Bend Relief</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Corner','圆化孔附近尖角的特征，表达设计意图','#3ecf8e')">● Corner</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Lightening Hole','带加强唇的圆形减重孔，切除后构建加强结构','#3ecf8e')">● Lightening Hole</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Lightening Cutout','带加强唇的异形减重切口','#3ecf8e')">● Lightening Cutout</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Tooling Hole','工装夹具定位孔，精度要求高','#3ecf8e')">● Tooling Hole</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Stiffening Flange','沿边缘弯折的加强翻边，提升整体刚度','#3ecf8e')">● Stiffening Flange</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Bead','线性或曲线压筋，通过局部变形提升抗弯刚度','#3ecf8e')">● Bead</div>
+      </div>
+    </div>
+    <div class="category-card">
+      <div class="cat-header">
+        <div class="cat-badge bg-deform">● Deformation / Contact</div>
+        <div class="cat-name" style="color:var(--amber)">Deformation Features</div>
+        <div class="cat-desc">通过材料变形产生的成形特征，包括翻边、突台等，8 种子特征</div>
+      </div>
+      <div class="cat-features">
+        <div class="feat-tag" onclick="selectFeat(this,'Flange','母特征外边缘成形的翻边，可平直或弯曲，用于装配或加强','#f5a623')">● Flange</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Attachment Flange','专用于装配连接的翻边，带紧固件孔','#f5a623')">● Attachment Flange</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Joggle','在 Web 或翻边上创建的台阶凹陷，用于零件层叠过渡','#f5a623')">● Joggle</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Twin Joggle','双侧对称的 Joggle，中间区域形成内凹','#f5a623')">● Twin Joggle</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Deformed Flange','由 Joggle 产生的派生变形翻边特征','#f5a623')">● Deformed Flange</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Deformed Web','由 Joggle 产生的派生变形腹板特征','#f5a623')">● Deformed Web</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Lip','伴随切口和孔产生的加强唇，提供额外刚度','#f5a623')">● Lip</div>
+        <div class="feat-tag" onclick="selectFeat(this,'Attachment Hole','连接件安装孔，需满足疲劳寿命要求','#f5a623')">● Attachment Hole</div>
+      </div>
+    </div>
+  </div>
+  <div id="feat-detail" style="display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div id="fd-dot" style="width:10px;height:10px;border-radius:50%"></div>
+      <div id="fd-name" style="font-size:16px;font-weight:700"></div>
+      <div id="fd-cat" style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--text2)"></div>
+    </div>
+    <div id="fd-desc" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text2)">
+    <span style="color:var(--accent);font-size:16px">ℹ</span>
+    点击任意特征标签查看描述 · 前往「特征录入 &amp; 识别」获取工艺推荐 · 「AI 工艺助手」支持自然语言提问
+  </div>
+</div>
+
+<!-- PANE 2: CLASSIFIER -->
+<div id="pane-classifier" class="pane">
+  <div class="page-header">
+    <div class="breadcrumb">ASM Classifier / 特征录入 &amp; 识别</div>
+    <div class="section-hdr">
+      <div><h2>特征参数输入 &amp; 工艺推荐</h2><p>输入零件特征参数，系统自动分类并推荐制造工艺路线</p></div>
+      <span class="tag-source">KDD-iCPPS Layer 3-A</span>
+    </div>
+  </div>
+  <div class="classifier-grid">
+    <div class="input-panel">
+      <div class="panel-title">特征参数录入</div>
+      <div class="field-group">
+        <div class="field-label">零件编号 <span>Part Number</span></div>
+        <input type="text" id="f-partno" placeholder="例：ASM-2026-001">
+      </div>
+      <div class="field-group">
+        <div class="field-label">特征类型 <span>Feature Type</span></div>
+        <select id="f-type">
+          <option value="">— 选择特征类型 —</option>
+          <optgroup label="Base Feature"><option value="Web">Web（腹板）</option></optgroup>
+          <optgroup label="Trim Features">
+            <option value="Cutout">Cutout（切口）</option>
+            <option value="Hole">Hole（孔）</option>
+            <option value="Stringer Cutout">Stringer Cutout（桁条槽）</option>
+            <option value="Bend Relief">Bend Relief（弯曲缺口）</option>
+            <option value="Corner">Corner（圆角）</option>
+            <option value="Lightening Hole">Lightening Hole（减重孔）</option>
+            <option value="Lightening Cutout">Lightening Cutout（减重切口）</option>
+            <option value="Tooling Hole">Tooling Hole（工装孔）</option>
+            <option value="Stiffening Flange">Stiffening Flange（加强翻边）</option>
+            <option value="Bead">Bead（压筋）</option>
+          </optgroup>
+          <optgroup label="Deformation Features">
+            <option value="Flange">Flange（翻边）</option>
+            <option value="Attachment Flange">Attachment Flange（装配翻边）</option>
+            <option value="Joggle">Joggle（突台）</option>
+            <option value="Twin Joggle">Twin Joggle（双突台）</option>
+            <option value="Deformed Flange">Deformed Flange（变形翻边）</option>
+            <option value="Deformed Web">Deformed Web（变形腹板）</option>
+            <option value="Lip">Lip（加强唇）</option>
+            <option value="Attachment Hole">Attachment Hole（连接孔）</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">材料 <span>Material</span></div>
+          <select id="f-mat">
+            <option value="">选择材料</option>
+            <option value="Al2024">Al 2024-T3</option>
+            <option value="Al7075">Al 7075-T6</option>
+            <option value="Al6061">Al 6061-T6</option>
+            <option value="Ti6Al4V">Ti-6Al-4V</option>
+            <option value="CFRP">CFRP 复合材料</option>
+            <option value="SS316L">不锈钢 316L</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">板厚 mm <span>Thickness</span></div>
+          <input type="number" id="f-thick" min="0.3" max="20" step="0.1" placeholder="例：1.6">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field-group">
+          <div class="field-label">尺寸 L mm</div>
+          <input type="number" id="f-len" min="1" placeholder="例：120">
+        </div>
+        <div class="field-group">
+          <div class="field-label">尺寸 W mm</div>
+          <input type="number" id="f-wid" min="1" placeholder="例：60">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">表面处理 <span>Surface Treatment</span></div>
+        <select id="f-surf">
+          <option value="">无特殊要求</option>
+          <option value="anodize">阳极氧化 Anodizing</option>
+          <option value="alodine">化学转化膜 Alodine</option>
+          <option value="paint">底漆 + 面漆</option>
+          <option value="shot_peen">喷丸强化 Shot Peening</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">补充描述 <span>可选</span></div>
+        <textarea id="f-desc" rows="2" placeholder="例：带加强唇，孔径 12mm，公差 ±0.05..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="runClassify()">识别 &amp; 推荐工艺</button>
+        <button class="btn btn-ghost" onclick="clearForm()">清空</button>
+      </div>
+    </div>
+    <div class="result-panel">
+      <div class="panel-title">识别结果 &amp; 工艺推荐</div>
+      <div id="result-area">
+        <div class="result-empty">
+          <div style="font-size:36px;margin-bottom:12px;opacity:.3">⬡</div>
+          <div style="font-size:14px;margin-bottom:4px">等待输入</div>
+          <div style="font-size:12px">填写左侧参数后点击「识别 &amp; 推荐工艺」</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANE 3: AI -->
+<div id="pane-ai" class="pane">
+  <div class="page-header">
+    <div class="breadcrumb">ASM Classifier / AI 工艺助手</div>
+    <div class="section-hdr">
+      <div><h2>AI 工艺分析助手</h2><p>基于 KDD-iCPPS 知识框架的智能问答</p></div>
+      <span class="tag-source">嵌入式 AI 模块 +3pts</span>
+    </div>
+  </div>
+  <div class="ai-layout">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="ai-avatar">✦</div>
+        <div>
+          <div class="chat-title">KDD-iCPPS 工艺助手</div>
+          <div class="chat-subtitle">基于航空钣金件知识框架</div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chat-msgs">
+        <div class="msg ai">你好！我是基于 KDD-iCPPS 框架的航空钣金件工艺助手。<br><br>你可以问我：<br>• 各特征（Flange、Joggle 等）的加工工艺与参数<br>• 特征识别方法与分类规则<br>• 不同材料对工艺选择的影响<br>• 论文框架各层的功能与原理</div>
+      </div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chat-input" rows="1" placeholder="输入问题，例：Joggle 特征的成形工艺是什么？" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+        <button class="send-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+    <div>
+      <div class="quick-panel">
+        <div class="quick-title">快速提问</div>
+        <button class="quick-btn" onclick="quickAsk('解释 Joggle 和 Twin Joggle 的区别，以及各自的成形工艺和参数')">Joggle vs Twin Joggle 区别与工艺</button>
+        <button class="quick-btn" onclick="quickAsk('航空铝合金 2024-T3 钣金件 Flange 翻边的推荐加工参数和注意事项')">Al 2024 翻边加工参数</button>
+        <button class="quick-btn" onclick="quickAsk('Lightening Hole 减重孔和 Lightening Cutout 的设计规范区别')">减重孔 vs 减重切口规范</button>
+        <button class="quick-btn" onclick="quickAsk('在 KDD-iCPPS 框架中，AFR 自动特征识别是如何从 STEP 文件提取特征的？')">AFR 从 STEP 提取特征原理</button>
+        <button class="quick-btn" onclick="quickAsk('Bend Relief 弯曲缺口的设计准则和尺寸计算方法')">Bend Relief 设计准则</button>
+      </div>
+      <div class="quick-panel" style="margin-top:14px">
+        <div class="quick-title">论文知识点</div>
+        <button class="quick-btn" onclick="quickAsk('简要介绍 KDD-iCPPS 框架的六个层次及其功能')">KDD-iCPPS 六层架构</button>
+        <button class="quick-btn" onclick="quickAsk('MfM（Models for Manufacturing）方法论的核心理念')">MfM 方法论核心</button>
+        <button class="quick-btn" onclick="quickAsk('语义互操作性在航空制造中解决什么问题？')">语义互操作性的作用</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANE 4: HISTORY -->
+<div id="pane-history" class="pane">
+  <div class="page-header">
+    <div class="breadcrumb">ASM Classifier / 识别记录</div>
+    <div class="section-hdr">
+      <div><h2>特征识别记录</h2><p>本次会话的识别历史</p></div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="clearHistory()">清空记录</button>
+    </div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+    <table class="history-table">
+      <thead><tr><th>#</th><th>时间</th><th>零件编号</th><th>特征类型</th><th>分类</th><th>材料</th><th>板厚</th><th>推荐工艺（首选）</th></tr></thead>
+      <tbody id="history-body">
+        <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">暂无记录，请先在「特征录入 &amp; 识别」完成分析并保存</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const FEATURE_DB = {
+  'Web':{cat:'Base Feature',color:'#4f8ef7',catKey:'web',desc:'钣金件的基础平面，由裁切坯料和成形操作产生，是所有其他特征的母特征。Web 决定了零件的整体轮廓和尺寸。',processes:[{name:'激光切割 Laser Cutting',detail:'精度 ±0.1mm，适合复杂轮廓，热影响区 < 0.3mm，推荐 Al 合金'},{name:'水刀切割 Waterjet',detail:'无热影响区，适合热敏感合金（Ti, CFRP），精度 ±0.2mm'},{name:'数控冲压 CNC Punching',detail:'适合批量生产，速度快，需验证孔边距离 ≥ 2t'}],note:'板材选择需考虑弯曲系数 K；最小弯曲半径（Al 2024）r ≥ 2t'},
+  'Cutout':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'通过去除母特征的一个截面产生，母特征边界保持不变，用于减重或功能开口，是最常见的修整特征之一。',processes:[{name:'数控铣削 CNC Milling',detail:'精度高，适合异形轮廓，推荐高速铣削（HSM），Ra ≤ 3.2μm'},{name:'激光切割 Laser Cutting',detail:'非接触，速度快，适合 t < 3mm 铝合金板材'},{name:'冲裁 Punching',detail:'批量生产首选，需保证模具间隙 c = 5–10% t'}],note:'边距要求：孔至边缘 ≥ 2t；孔间距 ≥ 3t；圆角 R ≥ t/2'},
+  'Hole':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'圆形截面的特定切除特征，是 Cutout 的特殊形式，广泛用于紧固件安装和减重，是航空钣金件中数量最多的特征类型。',processes:[{name:'钻孔 Drilling',detail:'标准工艺，推荐 TiAlN 涂层钻头，切削速度 80–120 m/min（Al）'},{name:'铰孔 Reaming',detail:'精度孔（H7/H8），Ra ≤ 1.6μm，用于定位销和精密紧固件'},{name:'冲孔 Punching',detail:'批量薄板（t < 3mm），效率高，需去除毛刺，孔口倒角 0.3×45°'}],note:'紧固件孔公差 ±0.05mm；定位孔 ±0.02mm；孔边距 ≥ 2D'},
+  'Stringer Cutout':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'通过改变母特征边界产生，专为桁条穿越安装预留空间，是翼肋、框等结构件的典型特征，需满足桁条配合公差。',processes:[{name:'数控铣削 CNC Milling',detail:'5轴加工中心，保证圆角 R 精度 ±0.05mm，Ra ≤ 1.6μm'},{name:'线切割 EDM Wire Cut',detail:'高精度（±0.01mm），适合硬质材料或薄壁结构'},{name:'激光切割 Laser Cutting',detail:'快速原型或小批量，需二次去毛刺处理'}],note:'圆角半径 R ≥ 3mm 防止应力集中；桁条配合公差 H8/f7'},
+  'Bend Relief':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'在翻边与 Web 之间维持安全距离的缺口特征，防止弯曲时开裂，缺口的长度和宽度由设计准则严格规定。',processes:[{name:'冲裁 + 弯曲 Punch & Bend',detail:'先冲缺口再弯边，缺口宽度 W ≥ t + r，顺序不可颠倒'},{name:'数控铣削',detail:'先铣缺口，缺口至折弯线距离 ≥ 2t，圆角 R ≥ 0.5t'},{name:'激光切割',detail:'非接触，精度高，适合复杂形状缺口轮廓'}],note:'缺口深度 L ≥ r + t/2；宽度 W ≥ t；根部圆角 R ≥ 0.5t'},
+  'Corner':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'圆化孔附近尖角的特征，Corner Relief 和 Corner 作为独立特征表达设计意图，防止应力集中导致疲劳裂纹。',processes:[{name:'数控铣削',detail:'圆角铣刀，精度 ±0.02mm，Ra ≤ 1.6μm，刀具半径 ≤ R设计'},{name:'电火花 EDM',detail:'内圆角 R < 0.5mm 的精密圆角加工'},{name:'研磨',detail:'小批量或试制阶段的辅助手段'}],note:'最小内圆角 R ≥ t/2；推荐 R ≥ 3mm 降低应力集中系数 Kt'},
+  'Lightening Hole':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'带加强唇（Lip）的圆形减重孔，在切除材料的同时在边界构建加强翻边以维持结构刚度，是航空结构减重的重要手段。',processes:[{name:'冲裁 + 拉伸成形 Flanging',detail:'一步冲孔拉伸成形唇边，唇高 h = 3–8mm，宽度均匀'},{name:'数控铣削 + 滚压',detail:'先铣孔，后滚压成形唇边，适合硬质材料'},{name:'激光切割 + 旋压',detail:'薄板（t < 2mm）快速成形，唇边厚度减薄 < 20%'}],note:'唇高 h ≥ 3t；唇根圆角 R ≥ 2t；孔间距 ≥ 3D（D 为孔径）'},
+  'Lightening Cutout':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'非圆形减重切口，配合加强唇结构，适用于异形轮廓减重区域，形状由载荷路径和结构需求决定。',processes:[{name:'数控铣削',detail:'轮廓铣削，高精度，适合任意异形轮廓，Ra ≤ 3.2μm'},{name:'激光 + 弯边成形',detail:'激光切轮廓后弯制唇边，适合薄板（t < 2mm）'},{name:'冲裁模具',detail:'批量生产，一步成形轮廓和唇边，一致性好'}],note:'圆角 R ≥ 5mm；唇边宽度均匀公差 ±0.3mm；唇根填角焊接可选'},
+  'Tooling Hole':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'工装夹具定位孔，精度要求极高，是装配基准，决定整个零件的装配定位精度，直接影响装配质量。',processes:[{name:'精密钻孔 + 铰孔',detail:'公差 H7（Ø10: +0/+0.021mm），Ra ≤ 0.8μm，去毛刺'},{name:'坐标镗孔',detail:'位置度 ±0.01mm，适合高精度装配基准孔'},{name:'数控镗铣',detail:'直径 > 20mm 的工装定位孔，同时保证圆度'}],note:'位置度 ≤ Ø0.1mm；圆柱度 ≤ 0.01mm；表面 Ra ≤ 0.8μm'},
+  'Stiffening Flange':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'沿零件边缘弯折形成的加强翻边，通过改变截面形状提升零件整体抗弯刚度，是最经济有效的刚化措施。',processes:[{name:'折弯 Press Braking',detail:'数控折弯机，角度精度 ±0.5°，适合直线翻边，回弹补偿 2–3°'},{name:'滚弯 Roll Forming',detail:'适合大曲率翻边，连续成形效率高，尺寸一致性好'},{name:'拉弯 Stretch Forming',detail:'复杂曲面翻边，回弹小，残余应力低'}],note:'翻边高度 h ≥ 3t；弯曲半径 r ≥ 1t（Al）；端部需倒角或圆弧收尾'},
+  'Bead':{cat:'Trim Feature',color:'#3ecf8e',catKey:'trim',desc:'沿表面的线性或曲线压筋特征，通过材料厚度方向局部变形显著提升抗弯刚度，可提升刚度约 3–5 倍。',processes:[{name:'冲压成形 Stamping',detail:'凸/凹模压筋，宽高比 W/H ≥ 2，压筋后回弹量小'},{name:'滚压成形 Roll Forming',detail:'连续线性压筋，效率高，适合长条形零件批量生产'},{name:'数控辊压',detail:'可变截面压筋，适合复杂曲线压筋路径'}],note:'筋高 H = 2–5t；筋宽 W = 4–10t；两端圆弧收尾 R ≥ 2t'},
+  'Flange':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'在母特征外边缘成形的翻边，可平直或弯曲，用于装配或加强，是钣金件中最重要的变形特征，分为单层/多层、直/弯、开放/闭合等多种形式。',processes:[{name:'折弯 Press Braking',detail:'精度 ±0.3mm，角度 ±0.5°，适合直翻边，数控折弯机保证一致性'},{name:'拉弯成形 Stretch Forming',detail:'曲面翻边，回弹控制优，适合 Al 合金大曲率翻边'},{name:'旋压 Spinning',detail:'圆形翻边，壁厚均匀，适合轴对称零件旋压翻边'}],note:'最小翻边高度 h ≥ 2.5t；Al 2024 最小弯曲半径 r ≥ 2t；回弹补偿必须考虑'},
+  'Attachment Flange':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'专用于装配连接的翻边，通常带有紧固件孔，需满足连接强度和疲劳寿命要求，是装配接口的核心特征。',processes:[{name:'折弯 + 钻孔',detail:'先成形翻边，再精密钻铆钉/螺栓孔，孔位精度 ±0.1mm'},{name:'冲压成形',detail:'一步冲压成形翻边和孔，批量一致性好，效率高'},{name:'数控加工',detail:'高精度配合面 Ra ≤ 1.6μm，重要接口面平面度 ≤ 0.1mm'}],note:'孔边距 ≥ 2D（D 为孔径）；翻边厚度均匀 ±0.05mm；贴合面平面度 ≤ 0.1mm'},
+  'Joggle':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'在 Web 或翻边上创建的台阶凹陷区域，用于零件层叠装配时的台阶过渡，避免装配间隙和应力集中，是航空骨架结构的典型特征。',processes:[{name:'模具压形 Die Forming',detail:'专用 Joggle 模具，深度精度 ±0.1mm，斜面角度 θ ≤ 30°'},{name:'手工成形 + 检具',detail:'试制和小批量，配合成形检具保证高度和角度'},{name:'CNC 弯曲 多步成形',detail:'数控折弯机多步成形，适合简单直线 Joggle，效率较低'}],note:'Joggle 深度 d = 配合板厚 + 间隙（0.1–0.5mm）；斜面角 θ ≤ 30°；过渡圆角 R ≥ 2t'},
+  'Twin Joggle':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'双侧对称的 Joggle 变形，中间区域形成内凹，两侧同步台阶，用于特殊双面装配配合需求，成形难度高于单侧 Joggle。',processes:[{name:'双面模具压形',detail:'上下同步成形，两侧深度一致性 ±0.05mm，需精密模具'},{name:'液压成形 Hydroforming',detail:'复杂双面 Joggle，回弹小，表面质量优，适合复杂形状'},{name:'数控渐进成形',detail:'小批量复杂形状，柔性高，无需专用模具'}],note:'两侧深度差 ≤ 0.1mm；两侧过渡圆角 R ≥ 3t；检测用专用检具验收'},
+  'Deformed Flange':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'由 Joggle 或 Twin Joggle 产生的变形翻边，被识别为独立的派生特征，需考虑 Joggle 对翻边成形性的影响。',processes:[{name:'复合模具成形',detail:'Joggle + 翻边一次成形，保证相对位置精度，降低工序数'},{name:'分步成形 + 检具',detail:'先翻边再 Joggle（或反向），中间用检具测量控制'},{name:'热成形 Hot Forming',detail:'高强铝合金或钛合金，降低成形力 30–50%，减少开裂风险'}],note:'展开尺寸计算需考虑 Joggle 区域材料流动；弯曲系数 K 需修正'},
+  'Deformed Web':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'Joggle 产生的变形腹板区域，作为独立特征进行识别和工艺规划，变形区域的平面度和尺寸精度直接影响装配质量。',processes:[{name:'模具压形',detail:'主要成形工艺，保证平面度 ≤ 0.3/100mm，残余应力低'},{name:'超塑性成形 SPF',detail:'Ti 合金或超塑 Al 材料，复杂形状一次成形，精度高'},{name:'蠕变时效成形',detail:'高强铝合金，消除回弹，变形精确，残余应力小'}],note:'变形区平面度 ±0.2mm；与相邻特征过渡平滑 R ≥ 3mm'},
+  'Lip':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'伴随切口和孔产生的加强唇边，通过局部翻边提供额外刚度，防止孔边和切口边缘失稳，常与 Lightening Hole 配合出现。',processes:[{name:'冲孔拉伸 Flanging',detail:'一步冲裁 + 拉伸成形唇边，唇高均匀，厚度减薄 < 20%'},{name:'激光切割 + 弯边',detail:'先切割孔轮廓，再辊压成形唇边，适合小批量'},{name:'整体铣削',detail:'厚板结构直接铣出唇边，精度高，适合钛合金'}],note:'唇高 h ≥ 3t；唇根圆角 R ≥ t；唇端厚度减薄 < 20%；均匀性 ±0.1mm'},
+  'Attachment Hole':{cat:'Deformation Feature',color:'#f5a623',catKey:'deform',desc:'连接件安装孔，需满足精度、表面质量和疲劳寿命要求，是承力连接的关键特征，孔的质量直接影响连接疲劳寿命。',processes:[{name:'干钻 + 铰孔',detail:'H8/H7 精度，Al 合金切削速度 80–120 m/min，适合常规紧固孔'},{name:'轨道钻孔 Orbital Drilling',detail:'CFRP 或叠层结构，无分层，出口质量优，推荐航空装配'},{name:'冲孔 + 去毛刺',detail:'薄板（t < 2mm）批量孔，速度快，需严格控制毛刺高度 ≤ 0.1mm'}],note:'位置度 ≤ Ø0.2mm；Ra ≤ 3.2μm；孔口倒角 0.3×45°；孔壁无裂纹'}
+};
+
+let historyData=[];
+
+function switchPane(id,el){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+function selectFeat(el,name,desc,color){
+  document.querySelectorAll('.feat-tag').forEach(t=>t.classList.remove('selected'));
+  el.classList.add('selected');
+  const d=FEATURE_DB[name];
+  const detail=document.getElementById('feat-detail');
+  detail.style.display='block';
+  document.getElementById('fd-dot').style.background=color;
+  document.getElementById('fd-name').textContent=name;
+  document.getElementById('fd-name').style.color=color;
+  document.getElementById('fd-cat').textContent=d?d.cat:'Feature';
+  document.getElementById('fd-desc').textContent=d?d.desc:desc;
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function runClassify(){
+  const type=document.getElementById('f-type').value;
+  const partno=document.getElementById('f-partno').value||'—';
+  const mat=document.getElementById('f-mat').value||'未指定';
+  const thick=document.getElementById('f-thick').value||'—';
+  const len=document.getElementById('f-len').value||'—';
+  const wid=document.getElementById('f-wid').value||'—';
+  const surf=document.getElementById('f-surf').value||'';
+  if(!type){
+    document.getElementById('result-area').innerHTML='<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:14px 16px;font-size:13px;color:#ef4444">请先选择特征类型</div>';
+    return;
+  }
+  const d=FEATURE_DB[type];
+  if(!d)return;
+  const catColor=d.color;
+  const rgbMap={'web':'79,142,247','trim':'62,207,142','deform':'245,166,35'};
+  const rgb=rgbMap[d.catKey];
+  let surfNote='';
+  if(surf==='anodize')surfNote='阳极氧化前孔径留 +0.02mm 余量，保证氧化后尺寸';
+  if(surf==='shot_peen')surfNote='喷丸后检查关键孔径和平面度变化，必要时补加工';
+  if(surf==='paint')surfNote='涂漆前去除所有毛刺，孔口倒角 0.3×45°，清洁度 Sa2.5';
+  if(surf==='alodine')surfNote='Alodine 处理前酸洗除氧化膜，处理后 2h 内底漆';
+  const procs=d.processes.map((p,i)=>`<div class="process-item"><div class="process-num" style="background:rgba(${rgb},.15);color:${catColor}">${i+1}</div><div class="process-content"><div class="process-name">${p.name}</div><div class="process-detail">${p.detail}</div></div></div>`).join('');
+  const matNote=mat==='Ti6Al4V'?'<div style="margin-top:8px;background:rgba(167,139,250,.08);border-left:3px solid var(--purple);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:var(--text2)"><strong style="color:var(--purple)">Ti 合金注意：</strong>切削速度降低至 Al 合金的 20–30%；必须使用冷却液；防止热氧化（温度 < 315°C）</div>':mat==='CFRP'?'<div style="margin-top:8px;background:rgba(167,139,250,.08);border-left:3px solid var(--purple);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:var(--text2)"><strong style="color:var(--purple)">CFRP 注意：</strong>使用金刚石涂层刀具；干切削优先；防止分层（进给量 ≤ 0.05mm/rev）</div>':'';
+  document.getElementById('result-area').innerHTML=`
+    <div class="result-class" style="background:rgba(${rgb},.08);border-color:rgba(${rgb},.25)">
+      <div class="class-label" style="color:${catColor}">${d.cat}</div>
+      <div class="class-name">${type}</div>
+      <div class="class-conf" style="color:${catColor}">${mat!=='未指定'?mat:'材料未指定'} · 板厚 ${thick}mm · ${len}×${wid} mm</div>
+      <div class="conf-bar-track"><div class="conf-bar-fill" style="width:94%;background:${catColor}"></div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.7;background:var(--bg3);padding:10px 12px;border-radius:8px">${d.desc}</div>
+    <div class="panel-title" style="margin-top:4px">推荐工艺路线</div>
+    <div class="process-list">${procs}</div>
+    ${d.note?`<div style="margin-top:10px;background:var(--bg3);border-left:3px solid ${catColor};border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.6"><strong style="color:var(--text)">设计准则：</strong>${d.note}</div>`:''}
+    ${surfNote?`<div style="margin-top:8px;background:rgba(245,166,35,.08);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:var(--text2)"><strong style="color:var(--amber)">表面处理：</strong>${surfNote}</div>`:''}
+    ${matNote}
+    <button class="btn btn-ghost" style="margin-top:14px;font-size:12px;width:100%" onclick="saveToHistory('${partno.replace(/'/g,"\\'")}','${type}','${d.cat}','${mat}','${thick}','${d.processes[0].name}')">保存到识别记录</button>`;
+}
+
+function clearForm(){
+  ['f-partno','f-type','f-mat','f-thick','f-len','f-wid','f-surf','f-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('result-area').innerHTML='<div class="result-empty"><div style="font-size:36px;margin-bottom:12px;opacity:.3">⬡</div><div style="font-size:14px;margin-bottom:4px">等待输入</div><div style="font-size:12px">填写左侧参数后点击「识别 &amp; 推荐工艺」</div></div>';
+}
+
+function saveToHistory(partno,type,cat,mat,thick,firstProcess){
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  historyData.unshift({no:historyData.length+1,time,partno,type,cat,mat,thick,firstProcess});
+  renderHistory();
+  alert('✓ 已保存到识别记录');
+}
+
+function renderHistory(){
+  const tbody=document.getElementById('history-body');
+  if(historyData.length===0){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">暂无记录</td></tr>';return;}
+  tbody.innerHTML=historyData.map((r,i)=>{
+    const catKey=r.cat.includes('Base')?'web':r.cat.includes('Trim')?'trim':'deform';
+    return`<tr><td style="color:var(--text3)">${i+1}</td><td style="color:var(--text2)">${r.time}</td><td style="font-family:monospace;font-size:12px">${r.partno}</td><td>${r.type}</td><td><span class="badge bg-${catKey}">${r.cat}</span></td><td style="color:var(--text2)">${r.mat}</td><td style="color:var(--text2)">${r.thick}mm</td><td style="color:var(--text2);font-size:12px">${r.firstProcess}</td></tr>`;
+  }).join('');
+}
+
+function clearHistory(){if(confirm('确认清空所有识别记录？')){historyData=[];renderHistory();}}
+
+const SYS=`你是一位专精于航空钣金件（ASM）制造的工艺工程师，深入理解 KDD-iCPPS 框架。
+
+知识来源：Skrzek et al. (2026) KDD-iCPPS Framework, Int. J. Adv. Manuf. Technol. 142: 2381–2407
+
+ASM 特征分类体系（论文 Fig.6）：
+- Base Feature：Web
+- Trim Features（10种）：Cutout, Hole, Stringer Cutout, Bend Relief, Corner, Lightening Hole, Lightening Cutout, Tooling Hole, Stiffening Flange, Bead
+- Deformation Features（8种）：Flange, Attachment Flange, Joggle, Twin Joggle, Deformed Flange, Deformed Web, Lip, Attachment Hole
+
+KDD-iCPPS 框架六层：Reference → Semantic & Alignment → Application Perspective → Data & Information → Communication Protocols → KDD Manufacturing Planning
+
+AFR（自动特征识别）：从 STEP AP-203 文件提取 B-rep 拓扑，基于规则识别特征几何和关系。
+
+请用中文回答，专业简洁，给出具体工艺参数。`;
+
+let chatHist=[];
+
+async function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const text=inp.value.trim();
+  if(!text)return;
+  inp.value='';
+  addMsg('user',text);
+  chatHist.push({role:'user',content:text});
+  const tid=addMsg('ai','正在分析...',true);
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYS,messages:chatHist})});
+    const data=await res.json();
+    const reply=(data.content||[]).map(c=>c.text||'').join('');
+    document.getElementById(tid).remove();
+    addMsg('ai',reply);
+    chatHist.push({role:'assistant',content:reply});
+  }catch(e){document.getElementById(tid).remove();addMsg('ai','请求失败，请稍后重试。');}
+}
+
+function addMsg(role,text,thinking=false){
+  const msgs=document.getElementById('chat-msgs');
+  const id='msg-'+Date.now()+Math.random();
+  const div=document.createElement('div');
+  div.id=id;div.className='msg '+role+(thinking?' thinking':'');
+  div.innerHTML=text.replace(/\n/g,'<br>');
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return id;
+}
+
+function quickAsk(q){document.getElementById('chat-input').value=q;sendChat();}
+</script>
+</body>
+</html>
